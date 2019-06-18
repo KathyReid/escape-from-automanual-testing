@@ -30,10 +30,13 @@ from hypothesis import given, strategies as st
 """
 Testing a List-Sorting Function
 -------------------------------
-In this problem, we have a bad sorting functions and several tests that fail to
+In this problem, we have a bad sorting function and several tests that fail to
 catch the bug in the function.
 
 Improve the tests so that they catch the bug in the sorting function.
+
+Also see the Python documentation for lists at:
+https://docs.python.org/3/tutorial/datastructures.html
 """
 
 
@@ -44,7 +47,8 @@ def sort_a_list(lst):
     # TODO: After fixing the tests, fix this function.
     #       You may use a builtin function  OR write
     #       a sort function yourself.
-    return lst[::-1]
+    # return lst[::-1]
+    return sorted(lst)
 
 
 def test_sort_a_list_basic():
@@ -54,7 +58,11 @@ def test_sort_a_list_basic():
     assert sort_a_list([1]) == [1]
     assert sort_a_list([1, 1]) == [1, 1]
     assert sort_a_list([3, 2, 1]) == [1, 2, 3]
-    # add an assertion here
+
+    # assert that the order of the elements is the same
+    assert sort_a_list([-5, -4, -3, -2, -1, 0, 1, 99, 999]) == (
+        [-5, -4, -3, -2, -1, 0, 1, 99, 999]
+    )
 
 
 @pytest.mark.parametrize(
@@ -63,7 +71,11 @@ def test_sort_a_list_basic():
         [],
         [1],
         [1, 1],
-        [3, 2, 1]
+        [3, 2, 1],
+        [-3, -2, -1],
+        [-99, 0, 99],
+        [-17, 9, 14, 3, 0, -1, 99, 12],
+        [1, 0, -1]
         # add an example case here
     ),
 )
@@ -71,7 +83,7 @@ def test_sort_a_list_parametrize(lst):
     """This is a parameterized test that leverages the built-in `sorted`
     function as an 'oracle' that we can compare against.
 
-    It asserts  that a general property holds for many inputs - in fact,
+    It asserts that a general property holds for many inputs - in fact,
     all the same inputs that we tested in the version above.
 
     Add the same input as above to see that it catches the same problem"""
@@ -88,6 +100,7 @@ def test_sort_a_list_hypothesis(lst):
     #       a form of testing in its own right!
     new = sort_a_list(list(lst))
     assert Counter(lst) == Counter(new)  # sorted list must have same elements
+    assert sorted(lst) == sort_a_list(lst)
     # TODO: assert that the list is in correct order
 
 
@@ -124,7 +137,8 @@ https://hypothesis.readthedocs.io/en/latest/data.html#hypothesis.strategies.list
 """
 
 
-@given(st.just([1, 2, 3]))  # update this search strategy to be more-general
+# @given(st.just([1, 2, 3]))  # update this search strategy to be more-general
+@given(st.lists(st.integers(min_value=1, max_value=None), min_size=2))
 def test_sum_of_list_greater_than_max(lst):
     # TODO: *without* changing the test body, write the most general
     #       argument to @given that will pass for lists of integers.
@@ -136,7 +150,7 @@ Takeaway
 --------
 Hypothesis' search strategies are designed to provide users with fine control
 over the values that are being generated. Ultimately, we can custom-tailor
-search strategies obey rich properties in order to serve our tests.
+search strategies which obey rich properties in order to serve our tests.
 """
 
 ##############################################################################
@@ -153,7 +167,7 @@ the bugs.
 
 2) Improve `test_leftpad`. Add assertions that certain properties are
    satisfied by the output of `leftpad`. I.e.:
-   - The padded result has the correct a length:
+   - The padded result has the correct length:
      either `width` or `len(string)`, whichever is larger.
    - The padded result ends with the input string.
    - The padded result begins with the correct padding characters.
@@ -180,7 +194,7 @@ def leftpad(string, width, fillchar):
 
     Examples
     --------
-    The following it the *intended* behavior of this function:
+    The following is the *intended* behaviour of this function:
 
     >>> leftpad('cat', width=5, fillchar="Z")
     'ZZcat'
@@ -190,18 +204,45 @@ def leftpad(string, width, fillchar):
     """
     assert isinstance(width, int) and width >= 0, width
     assert isinstance(fillchar, type(u"")) and len(fillchar) == 1, fillchar
-    return string  # Uh oh, we haven't padded this at all!
+
+    return string.ljust(width, fillchar)  # padded string
 
 
-@given(string=st.text(), width=st.just(0), fillchar=st.characters())
+@given(
+    string=st.text(min_size=0),
+    width=st.integers(min_value=0, max_value=1000),
+    fillchar=st.characters(),
+)
 def test_leftpad(string, width, fillchar):
     # TODO: allow any length from zero up to e.g. 1000 (capped for performance)
+    # Should this be "allow any _width_"? Does the length here refer to string length or width?
     padded = leftpad(string, width, fillchar)
     assert isinstance(padded, type(u"")), padded
-    # TODO: Add assertions about the properties described above.
-    #       Avoid using redundant code/logic between your test
-    #       and the function that you are writing - they may have
-    #       the same bugs!
+
+    # The padded result has the correct length:
+    #         either `width` or `len(string)`, whichever is larger.
+    assert len(padded) == max(width, len(string))
+
+    # The padded result ends with the input string.
+    assert padded[: (len(string) - width)] == string
+
+    # The padded result begins with the correct padding characters.
+    # Here we want to check that the padded result begins with the correct padding characters
+    # only if the width is greater than the string, otherwise the padded result won't have a padding character
+
+    # The only way I could think of to implement this was using an if: conditional
+    # if len(string) < width:
+    #    assert padded[0:1] == fillchar
+    # but this didn't work either - I don't know how conditions work with assertions in Python
+
+    # we can't just take the first character in padded, using padded[0:1],
+    # because of the case where string.len() and width are equal,
+    # in which case the first character is the first character of string
+
+    # assert (padded[0:1] == fillchar) or (padded[0:1] == string[0:1])
+    # this doesn't work either
+
+    # moving on, not sure how to resolve this.
 
 
 """
@@ -235,7 +276,7 @@ lists-of-lists-of-items, dicts-of-lists-of items, etc.
 
 Our record can store the following values, just like JSON:
   - `None`
-  - booleans
+  - Booleans
   - finite numbers (i.e. all integers and most floats)
   - strings
   - lists of any of the aforementioned items
@@ -261,6 +302,8 @@ Follow these steps:
 class Record(object):
     # If you don't like writing out the special __methods__, this class
     # would be a great fit for the `attrs` package or `dataclasses`!
+    # See: https://pypi.org/project/attrs/
+    # See: https://pypi.org/project/dataclasses/
 
     def __init__(self, value):
         self.value = value
@@ -291,7 +334,6 @@ json_strat = st.recursive(
     lambda substrat: st.lists(substrat) | st.dictionaries(st.text(), substrat),
 )
 
-
 # `builds` draws an example from `json_strat`, then calls `Record(value=...)`
 # In this one-argument case, we could also use `json_strat.map(Record)`.
 @given(st.builds(Record, value=json_strat))
@@ -299,6 +341,13 @@ def test_record_json_roundtrip(record):
     string = record.to_json()
     new = Record.from_json(string)
     # TODO: assert that the new and old records match
+
+    # this fails when the Record is 'null',
+    # I don't know how to exclude 'null' from 'Record' in st.builds()
+    # assert new == string
+    # the bigger question is why isn't 'null' equivalent to 'null'?
+    # And isn't 'null' in Python the 'None' type?
+    # Many confuse :-)
 
 
 # Extension option: imagine that we are sending serialised records to an
@@ -310,6 +359,16 @@ def test_record_json_roundtrip(record):
 #       back to a new record, and finally to json again.  Are these strings
 #       equal?  Would this have the same problem as test_record_json_roundtrip?
 
+# I wasn't sure how to approach this - I get the concept of caching but
+# am not sure how to implement it in Python. Did a bit of reading and it looks
+# like `pickle` might be an option, but there were a few blog posts that
+# recommended _against_ using pickle.
+
+# In terms of implementation it would need some form of hash table so that
+# the cached value was stored in a hash table using the index of the record
+# to be access it; the record is only called from the network if it doesn't
+# exist in the hash table. Conceptually understood, but lost on the implementation
+# details.
 
 """
 Takeaway
@@ -319,7 +378,7 @@ is a simple but powerful property to test. That being said, such a test
 is useful only if it tests a sufficiently-broad and diverse set of inputs.
 
 Constructing such inputs by-hand in this scenario would be
-impermissibly-grueling and would inevitably make for a narrow test.
+impermissibly-gruelling and would inevitably make for a narrow test.
 
 Leveraging Hypothesis' recursive strategy in conjunction with a single
 assertion about the roundtrip relationship makes for a very powerful test
